@@ -1,0 +1,35 @@
+name: Actualisation des prix Cardmarket
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '12 6 * * 1'
+permissions:
+  contents: write
+concurrency:
+  group: cardmarket-weekly-prices
+  cancel-in-progress: false
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Télécharger et valider les prix
+        run: python update_prices.py
+      - name: Enregistrer les relevés dans le dépôt
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- prix_cardmarket.json prix_historique_cardmarket.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Actualisation des cours Cardmarket"
+          git pull --rebase origin main
+          git push origin HEAD:main
